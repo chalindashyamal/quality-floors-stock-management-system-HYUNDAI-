@@ -1,0 +1,43 @@
+body {
+    background-color: #f7f7f7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.login-container, .register-container {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+}
+
+h3 {
+    font-weight: 500;
+}
+
+.form-control:invalid {
+    border-color: #dc3545;
+}
+
+.form-control:valid {
+    border-color: #28a745;
+}
+
+.input-group-text {
+    cursor: pointer;
+}
+
+.btn-primary {
+    background-color: #005e31;
+    border-color: #005e31;
+}
+
+.btn-primary:hover {
+    background-color: #2b7050;
+    border-color: #2b7050;
+}
