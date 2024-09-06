@@ -1,0 +1,18 @@
+.container {
+    max-width: 600px;
+    margin: auto;
+}
+
+h3 {
+    color: #005e31;
+}
+
+.btn-success {
+    background-color: #005e31;
+    border-color: #005e31;
+}
+
+.btn-success:hover {
+    background-color: #004526;
+    border-color: #004526;
+}

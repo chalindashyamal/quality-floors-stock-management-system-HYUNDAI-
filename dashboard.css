@@ -4,11 +4,20 @@ body {
     padding-top: 50px;
 }
 
+.navbar {
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+}
+
 .container {
     max-width: 900px;
     margin: auto;
+    padding-top: 4em; /* Adjusted padding to account for the fixed navbar */
 }
-.col-md-4{
+
+.col-md-4 {
     padding-top: 1em;
 }
 
@@ -33,11 +42,11 @@ body {
 }
 
 .btn-primary {
-    background-color: #007bff;
-    border-color: #007bff;
+    background-color: #005e31;
+    border-color: #005e31;
 }
 
 .btn-primary:hover {
-    background-color: #0056b3;
-    border-color: #0056b3;
+    background-color: #2b7050;
+    border-color: #2b7050;
 }
