@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Daily Report</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="create_report.css" />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav
+      class="navbar navbar-expand-lg navbar-dark"
+      style="background-color: #005e31"
+    >
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Stock Management</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="dashboard.html">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="add_product.html">New Product</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="create_report.html"
+                >Daily Report</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="view_report_history.html"
+                >Report History</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="logoutButton">Log-Out</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Report Form -->
+    <div class="container mt-5">
+      <h3 class="text-center mb-4">Create Daily Report</h3>
+      <form id="dailyReportForm">
+        <div class="row" id="materialSection">
+          <h5>Material</h5>
+          <!-- Material products will be loaded here -->
+        </div>
+        <div class="row" id="toolSection">
+          <h5>Tool</h5>
+          <!-- Tool products will be loaded here -->
+        </div>
+        <div class="row" id="machineSection">
+          <h5>Machine</h5>
+          <!-- Machine products will be loaded here -->
+        </div>
+        <div class="row" id="otherSection">
+          <h5>Other</h5>
+          <!-- Other products will be loaded here -->
+        </div>
+        <button type="submit" class="btn btn-success w-10 mt-3 mb-3">
+          Submit Report
+        </button>
+      </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Firebase Configuration -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        onValue,
+      } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
+      import {
+        getAuth,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+
+      // Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyBOUqZ-2pHBkeni3XBkWP8F__aXnU-cnzc",
+        authDomain: "qf-stock-management-system.firebaseapp.com",
+        databaseURL:
+          "https://qf-stock-management-system-default-rtdb.firebaseio.com",
+        projectId: "qf-stock-management-system",
+        storageBucket: "qf-stock-management-system.appspot.com",
+        messagingSenderId: "269936772287",
+        appId: "1:269936772287:web:c7b20ae6fd43f9723b320a",
+        measurementId: "G-XRTFW0MVPS",
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
+      const auth = getAuth(app);
+
+      // Sections where products will be displayed
+      const materialSection = document.getElementById("materialSection");
+      const toolSection = document.getElementById("toolSection");
+      const machineSection = document.getElementById("machineSection");
+      const otherSection = document.getElementById("otherSection");
+
+      // Load products and display them in their respective sections
+      function loadProducts() {
+        const productsRef = ref(database, "products");
+
+        onValue(productsRef, (snapshot) => {
+          const products = snapshot.val();
+
+          // Clear sections
+          materialSection.innerHTML = "<h5>Material</h5>";
+          toolSection.innerHTML = "<h5>Tool</h5>";
+          machineSection.innerHTML = "<h5>Machine</h5>";
+          otherSection.innerHTML = "<h5>Other</h5>";
+
+          for (const productId in products) {
+            const product = products[productId];
+            const productName = product.productName;
+            const productType = product.productType;
+
+            const productElement = document.createElement("div");
+            productElement.className = "mb-3 col-md-6";
+            productElement.innerHTML = `
+                        <label class="form-label">${productName}</label>
+                        <input type="number" class="form-control" name="${productId}_quantity" placeholder="Enter quantity">
+                    `;
+
+            if (productType === "material") {
+              materialSection.appendChild(productElement);
+            } else if (productType === "tool") {
+              toolSection.appendChild(productElement);
+            } else if (productType === "machine") {
+              machineSection.appendChild(productElement);
+            } else if (productType === "other") {
+              otherSection.appendChild(productElement);
+            }
+          }
+        });
+      }
+
+      // Load products when the page is loaded
+      window.addEventListener("load", loadProducts);
+
+      // Handle logout
+      document.getElementById("logoutButton").addEventListener("click", (e) => {
+        e.preventDefault();
+
+        if (confirm("Are you sure you want to log out?")) {
+          signOut(auth)
+            .then(() => {
+              window.location.href = "login.html";
+            })
+            .catch((error) => {
+              console.error("Logout failed:", error);
+              alert("Logout failed: " + error.message);
+            });
+        }
+      });
+    </script>
+  </body>
+</html>
