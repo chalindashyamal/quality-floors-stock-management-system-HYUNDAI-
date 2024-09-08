@@ -9,6 +9,13 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="add_product.css" />
+    <style>
+      .hidden {
+        position: absolute;
+        opacity: 0;
+        visibility: hidden;
+      }
+    </style>
   </head>
   <body>
     <!-- Navbar -->
@@ -77,14 +84,31 @@
             <option value="other">Other</option>
           </select>
         </div>
-        <div class="mb-3">
+        <div class="mb-3" id="quantitySection">
           <label for="quantity" class="form-label">Quantity</label>
+          <!-- Quantity input for materials -->
+          <div id="materialQuantityInputs" class="hidden">
+            <input
+              type="number"
+              class="form-control mb-2"
+              id="quantityKg"
+              placeholder="Enter quantity in kilograms"
+              step="0.01"
+            />
+            <input
+              type="number"
+              class="form-control"
+              id="quantityG"
+              placeholder="Enter quantity in grams"
+              step="1"
+            />
+          </div>
+          <!-- Quantity input for other types -->
           <input
             type="number"
-            class="form-control"
-            id="quantity"
+            class="form-control hidden"
+            id="quantityOther"
             placeholder="Enter quantity"
-            required
           />
         </div>
         <div id="errorMessage" class="text-danger text-center mb-3"></div>
@@ -126,6 +150,23 @@
       const database = getDatabase(app);
       const auth = getAuth(app);
 
+      // Handle product type change
+      document.getElementById("productType").addEventListener("change", (e) => {
+        const productType = e.target.value;
+        const materialInputs = document.getElementById(
+          "materialQuantityInputs"
+        );
+        const quantityOther = document.getElementById("quantityOther");
+
+        if (productType === "material") {
+          materialInputs.classList.remove("hidden");
+          quantityOther.classList.add("hidden");
+        } else {
+          materialInputs.classList.add("hidden");
+          quantityOther.classList.remove("hidden");
+        }
+      });
+
       // Handle product submission
       document
         .getElementById("addProductForm")
@@ -139,7 +180,21 @@
             .getElementById("productName")
             .value.trim();
           const productType = document.getElementById("productType").value;
-          const quantity = document.getElementById("quantity").value;
+          let quantity;
+
+          if (productType === "material") {
+            const quantityKg =
+              parseFloat(document.getElementById("quantityKg").value) || 0;
+            const quantityG =
+              parseFloat(document.getElementById("quantityG").value) || 0;
+            quantity =
+              quantityKg > 0
+                ? `${quantityKg} kg ${quantityG} g`.trim()
+                : `${quantityG} g`.trim();
+          } else {
+            quantity = document.getElementById("quantityOther").value;
+          }
+
           const errorMessage = document.getElementById("errorMessage");
 
           // Clear previous error message
@@ -173,6 +228,12 @@
                   .then(() => {
                     alert("Product added successfully!");
                     document.getElementById("addProductForm").reset();
+                    document
+                      .getElementById("materialQuantityInputs")
+                      .classList.add("hidden");
+                    document
+                      .getElementById("quantityOther")
+                      .classList.add("hidden");
                   })
                   .catch((error) => {
                     errorMessage.innerText =

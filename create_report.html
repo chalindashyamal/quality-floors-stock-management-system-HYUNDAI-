@@ -141,9 +141,9 @@
             const productElement = document.createElement("div");
             productElement.className = "mb-3 col-md-6";
             productElement.innerHTML = `
-                        <label class="form-label">${productName}</label>
-                        <input type="number" class="form-control" name="${productId}_quantity" placeholder="Enter quantity">
-                    `;
+              <label class="form-label">${productName}</label>
+              <input type="number" class="form-control" name="${productId}_quantity" placeholder="Enter quantity">
+            `;
 
             if (productType === "material") {
               materialSection.appendChild(productElement);
