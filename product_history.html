@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>View Products</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #f8f9fa;
+      }
+      .navbar {
+        background-color: #005e31;
+      }
+
+      .container {
+        margin-top: 20px;
+      }
+      .section-title {
+        margin-bottom: 20px;
+        color: #000000;
+
+        text-transform: uppercase;
+        border-bottom: 2px solid #000000;
+        display: inline-block;
+      }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        padding-top: 3px;
+        transition: transform 0.2s;
+      }
+      .card:hover {
+        transform: scale(1.02);
+      }
+      .card-title {
+        font-weight: bold;
+        color: #005e31;
+      }
+      .card-text {
+        font-size: 14px;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Stock Management</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="dashboard.html">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="add_product.html">New Product</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="create_report.html">Daily Report</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="view_report_history.html"
+                >Report History</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="product_history.html"
+                >Product Overview</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="logoutButton">Log-Out</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Product Cards -->
+    <div class="container">
+      <h5 class="section-title">Materials</h5>
+      <div class="row" id="materialCards">
+        <!-- Material cards will be inserted here -->
+      </div>
+
+      <h5 class="section-title">Tools</h5>
+      <div class="row" id="toolCards">
+        <!-- Tool cards will be inserted here -->
+      </div>
+
+      <h5 class="section-title">Machines</h5>
+      <div class="row" id="machineCards">
+        <!-- Machine cards will be inserted here -->
+      </div>
+
+      <h5 class="section-title">Others</h5>
+      <div class="row" id="otherCards">
+        <!-- Other cards will be inserted here -->
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        get,
+      } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBOUqZ-2pHBkeni3XBkWP8F__aXnU-cnzc",
+        authDomain: "qf-stock-management-system.firebaseapp.com",
+        databaseURL:
+          "https://qf-stock-management-system-default-rtdb.firebaseio.com",
+        projectId: "qf-stock-management-system",
+        storageBucket: "qf-stock-management-system.appspot.com",
+        messagingSenderId: "269936772287",
+        appId: "1:269936772287:web:c7b20ae6fd43f9723b320a",
+        measurementId: "G-XRTFW0MVPS",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
+
+      function createCard(product) {
+        const card = document.createElement("div");
+        card.className = "col-md-4 col-sm-6";
+        card.innerHTML = `
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">${product.productName}</h5>
+                        <p class="card-text">Quantity: ${product.quantity}</p>
+                    </div>
+                </div>
+            `;
+        return card;
+      }
+
+      function displayProducts(products) {
+        const materialCards = document.getElementById("materialCards");
+        const toolCards = document.getElementById("toolCards");
+        const machineCards = document.getElementById("machineCards");
+        const otherCards = document.getElementById("otherCards");
+
+        products.forEach((product) => {
+          const card = createCard(product);
+          if (product.productType === "material") {
+            materialCards.appendChild(card);
+          } else if (product.productType === "tool") {
+            toolCards.appendChild(card);
+          } else if (product.productType === "machine") {
+            machineCards.appendChild(card);
+          } else if (product.productType === "other") {
+            otherCards.appendChild(card);
+          }
+        });
+      }
+
+      // Fetch products from Firebase and display them
+      get(ref(database, "products"))
+        .then((snapshot) => {
+          if (snapshot.exists()) {
+            const products = [];
+            snapshot.forEach((childSnapshot) => {
+              products.push(childSnapshot.val());
+            });
+            displayProducts(products);
+          } else {
+            console.log("No products found");
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching products:", error);
+        });
+    </script>
+  </body>
+</html>

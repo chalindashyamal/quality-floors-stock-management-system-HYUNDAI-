@@ -12,7 +12,7 @@ body {
 }
 
 .container {
-    max-width: 900px;
+ 
     margin: auto;
     padding-top: 4em; /* Adjusted padding to account for the fixed navbar */
 }
@@ -50,3 +50,20 @@ body {
     background-color: #2b7050;
     border-color: #2b7050;
 }
+.custom-card {
+    height: 100%;
+    width: 100%;
+    max-width: 100%;
+    max-height: 400px; /* Set max height */
+    min-height: 400px; /* Set min height */
+  }
+  .card-img-top {
+    max-height: 200px; /* Ensure image does not overflow */
+    object-fit: cover; /* Adjust image to fit the card */
+  }
+  .card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
