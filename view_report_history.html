@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Report History</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="view_report_history.css" />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav
+      class="navbar navbar-expand-lg navbar-dark"
+      style="background-color: #005e31"
+    >
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Stock Management</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="dashboard.html">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="add_product.html">New Product</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="create_report.html">Daily Report</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="view_report_history.html"
+                >Report History</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="product_history.html"
+                >Product Overview</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="logoutButton">Log-Out</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Report History Section -->
+    <div class="container mt-5">
+      <h3 class="text-center mb-4">Daily Report History</h3>
+      <div id="reportHistoryList" class="list-group">
+        <!-- Reports will be listed here -->
+      </div>
+    </div>
+
+    <!-- Report Details Modal -->
+    <div
+      class="modal fade"
+      id="reportDetailsModal"
+      tabindex="-1"
+      aria-labelledby="reportDetailsModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="reportDetailsModalLabel">
+              Report Details
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body" id="reportDetailsContent">
+            <!-- Report details will be displayed here -->
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Firebase Configuration -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        onValue,
+        get,
+      } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
+      import {
+        getAuth,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+
+      // Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyBOUqZ-2pHBkeni3XBkWP8F__aXnU-cnzc",
+        authDomain: "qf-stock-management-system.firebaseapp.com",
+        databaseURL:
+          "https://qf-stock-management-system-default-rtdb.firebaseio.com",
+        projectId: "qf-stock-management-system",
+        storageBucket: "qf-stock-management-system.appspot.com",
+        messagingSenderId: "269936772287",
+        appId: "1:269936772287:web:c7b20ae6fd43f9723b320a",
+        measurementId: "G-XRTFW0MVPS",
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
+      const auth = getAuth(app);
+
+      const reportHistoryList = document.getElementById("reportHistoryList");
+      const reportDetailsModal = new bootstrap.Modal(
+        document.getElementById("reportDetailsModal")
+      );
+      const reportDetailsContent = document.getElementById(
+        "reportDetailsContent"
+      );
+
+      // Load report history
+      function loadReportHistory() {
+        const reportsRef = ref(database, "dailyReports");
+
+        onValue(reportsRef, (snapshot) => {
+          const reports = snapshot.val();
+          reportHistoryList.innerHTML = "";
+
+          for (const reportId in reports) {
+            const report = reports[reportId];
+            const timestamp = report.timestamp;
+            const reportData = report.data;
+
+            const reportItem = document.createElement("a");
+            reportItem.href = "#";
+            reportItem.className = "list-group-item list-group-item-action";
+            reportItem.innerHTML = `
+              <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">Report: ${new Date(
+                  timestamp
+                ).toLocaleString()}</h5>
+                <small>${new Date(timestamp).toDateString()}</small>
+              </div>
+              <p class="mb-1">Click to view details</p>
+            `;
+
+            reportItem.addEventListener("click", () => {
+              viewReportDetails(reportData, timestamp);
+            });
+
+            reportHistoryList.appendChild(reportItem);
+          }
+        });
+      }
+
+      
+      // View report details in a modal
+      async function viewReportDetails(reportData, timestamp) {
+        const productsRef = ref(database, "products");
+
+        try {
+          const snapshot = await get(productsRef);
+          const products = snapshot.val();
+
+          let reportDetails = `<h5 class="mb-3">Report Date: ${new Date(
+            timestamp
+          ).toLocaleString()}</h5>`;
+          reportDetails += `<ul class="list-group">`;
+
+          for (const key in reportData) {
+            if (key.endsWith("_quantity")) {
+              const productId = key.replace("_quantity", ""); // Extract product ID
+              const quantity = reportData[key];
+              const product = products[productId];
+
+              if (product) {
+                const productName = product.productName;
+                reportDetails += `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              ${productName}
+              <span class="badge bg-primary rounded-pill">${quantity}</span>
+            </li>`;
+              }
+            }
+          }
+
+          reportDetails += `</ul>`;
+          reportDetailsContent.innerHTML = reportDetails;
+          reportDetailsModal.show();
+        } catch (error) {
+          console.error("Error fetching product details:", error);
+          alert(
+            "An error occurred while loading report details. Please try again."
+          );
+        }
+      }
+
+      // Load report history when the page is loaded
+      window.addEventListener("load", loadReportHistory);
+
+      // Handle logout
+      document.getElementById("logoutButton").addEventListener("click", (e) => {
+        e.preventDefault();
+
+        if (confirm("Are you sure you want to log out?")) {
+          signOut(auth)
+            .then(() => {
+              window.location.href = "login.html";
+            })
+            .catch((error) => {
+              console.error("Logout failed:", error);
+              alert("Logout failed: " + error.message);
+            });
+        }
+      });
+    </script>
+  </body>
+</html>

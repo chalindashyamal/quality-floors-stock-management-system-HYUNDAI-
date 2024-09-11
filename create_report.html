@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="create_report.css" />
   </head>
   <body>
-    <!-- Navbar -->
     <nav
       class="navbar navbar-expand-lg navbar-dark"
       style="background-color: #005e31"
@@ -38,19 +37,15 @@
               <a class="nav-link" href="add_product.html">New Product</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link active" href="create_report.html"
-                >Daily Report</a
-              >
+              <a class="nav-link" href="create_report.html">Daily Report</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="view_report_history.html"
+              <a class="nav-link active" href="view_report_history.html"
                 >Report History</a
               >
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="product_history.html"
-                >Product Overview</a
-              >
+              <a class="nav-link" href="product_history.html">Product Overview</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" href="#" id="logoutButton">Log-Out</a>
@@ -94,6 +89,8 @@
       import {
         getDatabase,
         ref,
+        set,
+        push,
         onValue,
       } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
       import {
@@ -119,20 +116,16 @@
       const database = getDatabase(app);
       const auth = getAuth(app);
 
-      // Sections where products will be displayed
       const materialSection = document.getElementById("materialSection");
       const toolSection = document.getElementById("toolSection");
       const machineSection = document.getElementById("machineSection");
       const otherSection = document.getElementById("otherSection");
 
-      // Load products and display them in their respective sections
       function loadProducts() {
         const productsRef = ref(database, "products");
 
         onValue(productsRef, (snapshot) => {
           const products = snapshot.val();
-
-          // Clear sections
           materialSection.innerHTML = "<h5>Material</h5>";
           toolSection.innerHTML = "<h5>Tool</h5>";
           machineSection.innerHTML = "<h5>Machine</h5>";
@@ -163,10 +156,47 @@
         });
       }
 
-      // Load products when the page is loaded
       window.addEventListener("load", loadProducts);
 
-      // Handle logout
+      // Handle report submission
+      const dailyReportForm = document.getElementById("dailyReportForm");
+
+      dailyReportForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(dailyReportForm);
+        const reportData = {};
+        let hasData = false;
+
+        formData.forEach((value, key) => {
+          if (value) {
+            reportData[key] = value;
+            hasData = true;
+          }
+        });
+
+        if (hasData) {
+          const reportRef = ref(database, "dailyReports");
+          const newReportRef = push(reportRef);
+          const currentDateTime = new Date().toISOString();
+
+          set(newReportRef, {
+            timestamp: currentDateTime,
+            data: reportData,
+          })
+            .then(() => {
+              alert("Daily report created successfully!");
+              window.location.href = "view_report_history.html";
+            })
+            .catch((error) => {
+              console.error("Error creating report:", error);
+              alert("Error creating report: " + error.message);
+            });
+        } else {
+          alert("No data entered. Please enter quantities for the products.");
+        }
+      });
+
       document.getElementById("logoutButton").addEventListener("click", (e) => {
         e.preventDefault();
 
