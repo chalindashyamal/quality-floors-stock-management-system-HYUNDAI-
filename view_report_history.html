@@ -8,6 +8,14 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css"
+    />
     <link rel="stylesheet" href="view_report_history.css" />
   </head>
   <body>
@@ -61,6 +69,32 @@
     <!-- Report History Section -->
     <div class="container mt-5">
       <h3 class="text-center mb-4">Daily Report History</h3>
+
+      <!-- Date Search Form -->
+      <form id="dateSearchForm" class="mb-4">
+        <div class="row g-3 align-items-center">
+          <div class="col-auto">
+            <label for="datePicker" class="col-form-label">Select Date:</label>
+          </div>
+          <div class="col-auto">
+            <input
+              type="text"
+              id="datePicker"
+              class="form-control"
+              placeholder="Select a date"
+            />
+          </div>
+          <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Search</button>
+          </div>
+          <div class="col-auto">
+            <button type="button" id="resetSearch" class="btn btn-secondary">
+              Reset
+            </button>
+          </div>
+        </div>
+      </form>
+
       <div id="reportHistoryList" class="list-group">
         <!-- Reports will be listed here -->
       </div>
@@ -104,6 +138,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <!-- Firebase Configuration -->
     <script type="module">
@@ -144,9 +179,18 @@
       const reportDetailsContent = document.getElementById(
         "reportDetailsContent"
       );
+      const dateSearchForm = document.getElementById("dateSearchForm");
+      const datePicker = document.getElementById("datePicker");
+      const resetSearchButton = document.getElementById("resetSearch");
+
+      // Initialize Flatpickr
+      flatpickr(datePicker, {
+        dateFormat: "Y-m-d",
+        maxDate: "today",
+      });
 
       // Load report history
-      function loadReportHistory() {
+      function loadReportHistory(selectedDate = null) {
         const reportsRef = ref(database, "dailyReports");
 
         onValue(reportsRef, (snapshot) => {
@@ -156,31 +200,54 @@
           for (const reportId in reports) {
             const report = reports[reportId];
             const timestamp = report.timestamp;
-            const reportData = report.data;
+            const reportDate = new Date(timestamp);
 
-            const reportItem = document.createElement("a");
-            reportItem.href = "#";
-            reportItem.className = "list-group-item list-group-item-action";
-            reportItem.innerHTML = `
-              <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1">Report: ${new Date(
-                  timestamp
-                ).toLocaleString()}</h5>
-                <small>${new Date(timestamp).toDateString()}</small>
-              </div>
-              <p class="mb-1">Click to view details</p>
-            `;
+            // Filter by selected date if provided
+            if (selectedDate && !isSameDay(reportDate, selectedDate)) {
+              continue;
+            }
 
-            reportItem.addEventListener("click", () => {
-              viewReportDetails(reportData, timestamp);
-            });
-
+            const reportItem = createReportItem(report, timestamp);
             reportHistoryList.appendChild(reportItem);
+          }
+
+          if (reportHistoryList.children.length === 0) {
+            reportHistoryList.innerHTML =
+              '<p class="text-center">No reports found for the selected date.</p>';
           }
         });
       }
 
-      
+      function createReportItem(report, timestamp) {
+        const reportItem = document.createElement("div");
+        reportItem.className =
+          "list-group-item list-group-item-action d-flex justify-content-between align-items-center";
+        reportItem.innerHTML = `
+          <div>
+            <h5 class="mb-1">Report: ${new Date(
+              timestamp
+            ).toLocaleString()}</h5>
+            <p class="mb-1">Click to view details</p>
+          </div>
+          <button class="btn btn-sm btn-outline-primary download-btn" data-timestamp="${timestamp}">
+            <i class="bi bi-download"></i> Download
+          </button>
+        `;
+
+        reportItem.querySelector("h5").addEventListener("click", () => {
+          viewReportDetails(report.data, timestamp);
+        });
+
+        reportItem
+          .querySelector(".download-btn")
+          .addEventListener("click", (e) => {
+            e.stopPropagation();
+            downloadReport(report.data, timestamp);
+          });
+
+        return reportItem;
+      }
+
       // View report details in a modal
       async function viewReportDetails(reportData, timestamp) {
         const productsRef = ref(database, "products");
@@ -203,10 +270,10 @@
               if (product) {
                 const productName = product.productName;
                 reportDetails += `
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              ${productName}
-              <span class="badge bg-primary rounded-pill">${quantity}</span>
-            </li>`;
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${productName}
+                    <span class="badge bg-primary rounded-pill">${quantity}</span>
+                  </li>`;
               }
             }
           }
@@ -222,8 +289,76 @@
         }
       }
 
+      // Download report as text file
+      async function downloadReport(reportData, timestamp) {
+        const productsRef = ref(database, "products");
+
+        try {
+          const snapshot = await get(productsRef);
+          const products = snapshot.val();
+
+          let reportText = `Daily Report - ${new Date(
+            timestamp
+          ).toLocaleString()}\n\n`;
+
+          for (const key in reportData) {
+            if (key.endsWith("_quantity")) {
+              const productId = key.replace("_quantity", "");
+              const quantity = reportData[key];
+              const product = products[productId];
+
+              if (product) {
+                const productName = product.productName;
+                reportText += `${productName}: ${quantity}\n`;
+              }
+            }
+          }
+
+          const blob = new Blob([reportText], { type: "text/plain" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `Daily_Report_${
+            new Date(timestamp).toISOString().split("T")[0]
+          }.txt`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.error("Error generating report download:", error);
+          alert(
+            "An error occurred while generating the report download. Please try again."
+          );
+        }
+      }
+
+      // Helper function to compare dates
+      function isSameDay(date1, date2) {
+        return (
+          date1.getFullYear() === date2.getFullYear() &&
+          date1.getMonth() === date2.getMonth() &&
+          date1.getDate() === date2.getDate()
+        );
+      }
+
+      // Handle date search
+      dateSearchForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const selectedDate = datePicker.value;
+        if (selectedDate) {
+          loadReportHistory(new Date(selectedDate));
+        }
+      });
+
+      // Reset search
+      resetSearchButton.addEventListener("click", () => {
+        datePicker.value = "";
+        loadReportHistory();
+      });
+
       // Load report history when the page is loaded
-      window.addEventListener("load", loadReportHistory);
+      window.addEventListener("load", () => loadReportHistory());
 
       // Handle logout
       document.getElementById("logoutButton").addEventListener("click", (e) => {
