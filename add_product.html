@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Add Product</title>
+    <title>Add or Update Product</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -11,14 +11,12 @@
     <link rel="stylesheet" href="add_product.css" />
     <style>
       .hidden {
-        position: absolute;
-        opacity: 0;
-        visibility: hidden;
+        display: none;
       }
     </style>
   </head>
   <body>
-    <!-- Navbar -->
+    <!-- Navbar (unchanged) -->
     <nav
       class="navbar navbar-expand-lg navbar-dark"
       style="background-color: #005e31"
@@ -42,13 +40,13 @@
               <a class="nav-link" href="dashboard.html">Home</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link active" href="add_product.html">New Product</a>
+              <a class="nav-link" href="add_product.html">New Product</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" href="create_report.html">Daily Report</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="view_report_history.html"
+              <a class="nav-link active" href="view_report_history.html"
                 >Report History</a
               >
             </li>
@@ -64,11 +62,10 @@
         </div>
       </div>
     </nav>
-
-    <!-- Add Product Form -->
+    <!-- Add or Update Product Form -->
     <div class="container mt-5">
-      <h3 class="text-center mb-4">Add New Product</h3>
-      <form id="addProductForm">
+      <h3 class="text-center mb-4">Add or Update Product</h3>
+      <form id="productForm">
         <div class="mb-3">
           <label for="productName" class="form-label">Product Name</label>
           <input
@@ -91,7 +88,6 @@
         </div>
         <div class="mb-3" id="quantitySection">
           <label for="quantity" class="form-label">Quantity</label>
-          <!-- Quantity input for materials -->
           <div id="materialQuantityInputs" class="hidden">
             <input
               type="number"
@@ -108,7 +104,6 @@
               step="1"
             />
           </div>
-          <!-- Quantity input for other types -->
           <input
             type="number"
             class="form-control hidden"
@@ -117,7 +112,16 @@
           />
         </div>
         <div id="errorMessage" class="text-danger text-center mb-3"></div>
-        <button type="submit" class="btn btn-success w-100">Add Product</button>
+        <button type="submit" class="btn btn-success w-100" id="addButton">
+          Add Product
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary w-100 mt-2 hidden"
+          id="updateButton"
+        >
+          Update Product
+        </button>
       </form>
     </div>
 
@@ -131,6 +135,7 @@
         ref,
         get,
         push,
+        update,
       } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
       import {
         getAuth,
@@ -155,114 +160,204 @@
       const database = getDatabase(app);
       const auth = getAuth(app);
 
-      // Handle product type change
-      document.getElementById("productType").addEventListener("change", (e) => {
-        const productType = e.target.value;
-        const materialInputs = document.getElementById(
-          "materialQuantityInputs"
-        );
-        const quantityOther = document.getElementById("quantityOther");
+      const productForm = document.getElementById("productForm");
+      const productNameInput = document.getElementById("productName");
+      const productTypeSelect = document.getElementById("productType");
+      const materialQuantityInputs = document.getElementById(
+        "materialQuantityInputs"
+      );
+      const quantityOtherInput = document.getElementById("quantityOther");
+      const errorMessageDiv = document.getElementById("errorMessage");
+      const addButton = document.getElementById("addButton");
+      const updateButton = document.getElementById("updateButton");
 
+      let currentProductKey = null;
+      let currentProductType = null;
+      let currentQuantity = null;
+
+      // Handle product type change
+      productTypeSelect.addEventListener("change", (e) => {
+        const productType = e.target.value;
         if (productType === "material") {
-          materialInputs.classList.remove("hidden");
-          quantityOther.classList.add("hidden");
+          materialQuantityInputs.classList.remove("hidden");
+          quantityOtherInput.classList.add("hidden");
         } else {
-          materialInputs.classList.add("hidden");
-          quantityOther.classList.remove("hidden");
+          materialQuantityInputs.classList.add("hidden");
+          quantityOtherInput.classList.remove("hidden");
         }
       });
 
       // Handle product submission
-      document
-        .getElementById("addProductForm")
-        .addEventListener("submit", (e) => {
-          e.preventDefault();
+      productForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        handleProductSubmission();
+      });
 
-          const submitButton = e.target.querySelector("button[type='submit']");
-          submitButton.disabled = true;
+      // Handle product submission (add or update)
+      function handleProductSubmission() {
+        const productName = productNameInput.value.trim();
+        const productType = productTypeSelect.value;
+        let quantity = getQuantityValue();
 
-          const productName = document
-            .getElementById("productName")
-            .value.trim();
-          const productType = document.getElementById("productType").value;
-          let quantity;
+        errorMessageDiv.innerText = "";
+        addButton.disabled = true;
 
-          if (productType === "material") {
-            const quantityKg =
-              parseFloat(document.getElementById("quantityKg").value) || 0;
-            const quantityG =
-              parseFloat(document.getElementById("quantityG").value) || 0;
-            quantity =
-              quantityKg > 0
-                ? `${quantityKg} kg ${quantityG} g`.trim()
-                : `${quantityG} g`.trim();
-          } else {
-            quantity = document.getElementById("quantityOther").value;
+        // Check if the product already exists
+        const productRef = ref(database, "products");
+        get(productRef)
+          .then((snapshot) => {
+            let productExists = false;
+            let productKey = "";
+
+            snapshot.forEach((childSnapshot) => {
+              if (
+                childSnapshot.val().productName.toLowerCase() ===
+                productName.toLowerCase()
+              ) {
+                productExists = true;
+                productKey = childSnapshot.key;
+                currentProductType = childSnapshot.val().productType;
+                currentQuantity = childSnapshot.val().quantity;
+              }
+            });
+
+            if (productExists) {
+              currentProductKey = productKey;
+              showUpdateButton();
+              errorMessageDiv.innerText =
+                "Product exists. You can update the quantity.";
+            } else {
+              addNewProduct(productName, productType, quantity);
+            }
+          })
+          .catch((error) => {
+            showError("Error checking product: " + error.message);
+          })
+          .finally(() => {
+            addButton.disabled = false;
+          });
+      }
+
+      // Add new product
+      function addNewProduct(productName, productType, quantity) {
+        push(ref(database, "products"), {
+          productName: productName,
+          productType: productType,
+          quantity: quantity,
+        })
+          .then(() => {
+            alert("Product added successfully!");
+            resetForm();
+          })
+          .catch((error) => {
+            showError("Error adding product: " + error.message);
+          });
+      }
+
+      // Update existing product
+      function updateExistingProduct() {
+        if (!currentProductKey) {
+          showError("No product selected for update");
+          return;
+        }
+
+        const newQuantity = getQuantityValue();
+        const updatedQuantity = addQuantities(currentQuantity, newQuantity);
+
+        update(ref(database, `products/${currentProductKey}`), {
+          quantity: updatedQuantity,
+        })
+          .then(() => {
+            alert("Product updated successfully!");
+            resetForm();
+          })
+          .catch((error) => {
+            showError("Error updating product: " + error.message);
+          });
+      }
+
+      // Get quantity value based on product type
+      function getQuantityValue() {
+        const productType = productTypeSelect.value;
+        if (productType === "material") {
+          const quantityKg =
+            parseFloat(document.getElementById("quantityKg").value) || 0;
+          const quantityG =
+            parseFloat(document.getElementById("quantityG").value) || 0;
+          return quantityKg > 0
+            ? `${quantityKg} kg ${quantityG} g`.trim()
+            : `${quantityG} g`.trim();
+        } else {
+          return quantityOtherInput.value;
+        }
+      }
+
+      // Add quantities
+      function addQuantities(oldQuantity, newQuantity) {
+        if (currentProductType === "material") {
+          const oldParts = oldQuantity.split(" ");
+          const newParts = newQuantity.split(" ");
+
+          let oldKg = 0,
+            oldG = 0,
+            newKg = 0,
+            newG = 0;
+
+          for (let i = 0; i < oldParts.length; i += 2) {
+            if (oldParts[i + 1] === "kg") oldKg = parseFloat(oldParts[i]);
+            if (oldParts[i + 1] === "g") oldG = parseFloat(oldParts[i]);
           }
 
-          const errorMessage = document.getElementById("errorMessage");
+          for (let i = 0; i < newParts.length; i += 2) {
+            if (newParts[i + 1] === "kg") newKg = parseFloat(newParts[i]);
+            if (newParts[i + 1] === "g") newG = parseFloat(newParts[i]);
+          }
 
-          // Clear previous error message
-          errorMessage.innerText = "";
+          let totalG = (oldKg + newKg) * 1000 + oldG + newG;
+          let totalKg = Math.floor(totalG / 1000);
+          totalG = totalG % 1000;
 
-          // Check if the product already exists
-          const productRef = ref(database, "products");
-          get(productRef)
-            .then((snapshot) => {
-              let productExists = false;
+          return totalKg > 0
+            ? `${totalKg} kg ${totalG} g`.trim()
+            : `${totalG} g`.trim();
+        } else {
+          return (parseFloat(oldQuantity) + parseFloat(newQuantity)).toString();
+        }
+      }
 
-              snapshot.forEach((childSnapshot) => {
-                if (
-                  childSnapshot.val().productName.toLowerCase() ===
-                  productName.toLowerCase()
-                ) {
-                  productExists = true;
-                }
-              });
+      // Show update button
+      function showUpdateButton() {
+        addButton.classList.add("hidden");
+        updateButton.classList.remove("hidden");
+      }
 
-              if (productExists) {
-                errorMessage.innerText =
-                  "This product is already in the store.";
-              } else {
-                // Store product data in Firebase Realtime Database
-                push(ref(database, "products"), {
-                  productName: productName,
-                  productType: productType,
-                  quantity: quantity,
-                })
-                  .then(() => {
-                    alert("Product added successfully!");
-                    document.getElementById("addProductForm").reset();
-                    document
-                      .getElementById("materialQuantityInputs")
-                      .classList.add("hidden");
-                    document
-                      .getElementById("quantityOther")
-                      .classList.add("hidden");
-                  })
-                  .catch((error) => {
-                    errorMessage.innerText =
-                      "Error adding product: " + error.message;
-                  });
-              }
-            })
-            .catch((error) => {
-              errorMessage.innerText =
-                "Error checking product: " + error.message;
-            })
-            .finally(() => {
-              submitButton.disabled = false;
-            });
-        });
+      // Reset form
+      function resetForm() {
+        productForm.reset();
+        materialQuantityInputs.classList.add("hidden");
+        quantityOtherInput.classList.add("hidden");
+        addButton.classList.remove("hidden");
+        updateButton.classList.add("hidden");
+        currentProductKey = null;
+        currentProductType = null;
+        currentQuantity = null;
+        errorMessageDiv.innerText = "";
+      }
+
+      // Show error message
+      function showError(message) {
+        errorMessageDiv.innerText = message;
+      }
+
+      // Handle update button click
+      updateButton.addEventListener("click", updateExistingProduct);
 
       // Handle logout
       document.getElementById("logoutButton").addEventListener("click", (e) => {
         e.preventDefault();
-
         if (confirm("Are you sure you want to log out?")) {
           signOut(auth)
             .then(() => {
-              // Redirect to login page
               window.location.href = "login.html";
             })
             .catch((error) => {

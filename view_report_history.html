@@ -261,20 +261,40 @@
           ).toLocaleString()}</h5>`;
           reportDetails += `<ul class="list-group">`;
 
+          // To avoid duplicates, use a Set to track which product IDs have been processed
+          const processedProducts = new Set();
+
           for (const key in reportData) {
-            if (key.endsWith("_quantity")) {
-              const productId = key.replace("_quantity", ""); // Extract product ID
-              const quantity = reportData[key];
+            const productId = key.replace(/(_quantity|_kg|_grams)/, ""); // Extract product ID
+
+            // Only process if the product hasn't been displayed yet
+            if (!processedProducts.has(productId)) {
               const product = products[productId];
+              let quantityDisplay = "";
+
+              // If it's a material with both kg and grams
+              const kg = reportData[`${productId}_kg`] || 0;
+              const grams = reportData[`${productId}_grams`] || 0;
+
+              if (kg || grams) {
+                quantityDisplay = `${kg} kg ${grams} grams`;
+              } else {
+                // For non-materials or items with only a quantity field
+                const quantity = reportData[`${productId}_quantity`] || 0;
+                quantityDisplay = `${quantity}`;
+              }
 
               if (product) {
                 const productName = product.productName;
                 reportDetails += `
-                  <li class="list-group-item d-flex justify-content-between align-items-center">
-                    ${productName}
-                    <span class="badge bg-primary rounded-pill">${quantity}</span>
-                  </li>`;
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              ${productName}
+              <span class="badge bg-primary rounded-pill">${quantityDisplay}</span>
+            </li>`;
               }
+
+              // Mark this product as processed
+              processedProducts.add(productId);
             }
           }
 

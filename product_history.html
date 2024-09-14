@@ -15,14 +15,12 @@
       .navbar {
         background-color: #005e31;
       }
-
       .container {
         margin-top: 20px;
       }
       .section-title {
         margin-bottom: 20px;
         color: #000000;
-
         text-transform: uppercase;
         border-bottom: 2px solid #000000;
         display: inline-block;
@@ -121,6 +119,10 @@
         ref,
         get,
       } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
+      import {
+        getAuth,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBOUqZ-2pHBkeni3XBkWP8F__aXnU-cnzc",
@@ -136,18 +138,21 @@
 
       const app = initializeApp(firebaseConfig);
       const database = getDatabase(app);
+      const auth = getAuth(app);
 
       function createCard(product) {
         const card = document.createElement("div");
         card.className = "col-md-4 col-sm-6";
         card.innerHTML = `
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">${product.productName}</h5>
-                        <p class="card-text">Quantity: ${product.quantity}</p>
-                    </div>
-                </div>
-            `;
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">${product.productName}</h5>
+              <p class="card-text">Quantity: ${product.quantity} ${
+          product.productType === "material" ? "grams" : ""
+        }</p>
+            </div>
+          </div>
+        `;
         return card;
       }
 
@@ -187,6 +192,22 @@
         .catch((error) => {
           console.error("Error fetching products:", error);
         });
+
+      // Handle logout
+      document.getElementById("logoutButton").addEventListener("click", (e) => {
+        e.preventDefault();
+
+        if (confirm("Are you sure you want to log out?")) {
+          signOut(auth)
+            .then(() => {
+              window.location.href = "login.html";
+            })
+            .catch((error) => {
+              console.error("Logout failed:", error);
+              alert("Logout failed: " + error.message);
+            });
+        }
+      });
     </script>
   </body>
 </html>

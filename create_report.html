@@ -37,15 +37,19 @@
               <a class="nav-link" href="add_product.html">New Product</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="create_report.html">Daily Report</a>
+              <a class="nav-link active" href="create_report.html"
+                >Daily Report</a
+              >
             </li>
             <li class="nav-item">
-              <a class="nav-link active" href="view_report_history.html"
+              <a class="nav-link" href="view_report_history.html"
                 >Report History</a
               >
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="product_history.html">Product Overview</a>
+              <a class="nav-link" href="product_history.html"
+                >Product Overview</a
+              >
             </li>
             <li class="nav-item">
               <a class="nav-link" href="#" id="logoutButton">Log-Out</a>
@@ -92,6 +96,8 @@
         set,
         push,
         onValue,
+        update,
+        get,
       } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
       import {
         getAuth,
@@ -138,10 +144,19 @@
 
             const productElement = document.createElement("div");
             productElement.className = "mb-3 col-md-6";
-            productElement.innerHTML = `
-              <label class="form-label">${productName}</label>
-              <input type="number" class="form-control" name="${productId}_quantity" placeholder="Enter quantity">
-            `;
+            if (productType === "material") {
+              productElement.innerHTML = `
+                <label class="form-label">${productName} (kg)</label>
+                <input type="number" step="0.01" class="form-control" name="${productId}_kg" placeholder="Enter kg">
+                <label class="form-label">Grams</label>
+                <input type="number" step="1" class="form-control" name="${productId}_grams" placeholder="Enter grams">
+              `;
+            } else {
+              productElement.innerHTML = `
+                <label class="form-label">${productName}</label>
+                <input type="number" class="form-control" name="${productId}_quantity" placeholder="Enter quantity">
+              `;
+            }
 
             if (productType === "material") {
               materialSection.appendChild(productElement);
@@ -185,6 +200,41 @@
             data: reportData,
           })
             .then(() => {
+              // Update product quantities if the product is in the material section
+              const materialUpdates = {};
+
+              Object.entries(reportData).forEach(async ([key, value]) => {
+                if (key.endsWith("_kg") || key.endsWith("_grams")) {
+                  const productId = key.split("_")[0];
+                  const kg = parseFloat(reportData[`${productId}_kg`] || 0);
+                  const grams = parseFloat(
+                    reportData[`${productId}_grams`] || 0
+                  );
+                  const totalGrams = kg * 1000 + grams;
+
+                  try {
+                    const productRef = ref(database, `products/${productId}`);
+                    const productSnapshot = await get(productRef); // Using get instead of onValue for synchronous behavior
+                    const product = productSnapshot.val();
+                    const currentQuantity = product.quantity || 0;
+                    const newQuantity = currentQuantity - totalGrams / 1000; // Convert grams to kilograms
+
+                    materialUpdates[productId] = newQuantity;
+                  } catch (error) {
+                    console.error("Error fetching product:", error);
+                  }
+                }
+              });
+
+              // Once all material updates are collected, update Firebase
+              for (const [id, quantity] of Object.entries(materialUpdates)) {
+                update(ref(database, `products/${id}`), {
+                  quantity: quantity,
+                }).catch((error) => {
+                  console.error("Error updating product quantity:", error);
+                });
+              }
+
               alert("Daily report created successfully!");
               window.location.href = "view_report_history.html";
             })
@@ -198,18 +248,13 @@
       });
 
       document.getElementById("logoutButton").addEventListener("click", (e) => {
-        e.preventDefault();
-
-        if (confirm("Are you sure you want to log out?")) {
-          signOut(auth)
-            .then(() => {
-              window.location.href = "login.html";
-            })
-            .catch((error) => {
-              console.error("Logout failed:", error);
-              alert("Logout failed: " + error.message);
-            });
-        }
+        signOut(auth)
+          .then(() => {
+            window.location.href = "login.html";
+          })
+          .catch((error) => {
+            console.error("Logout error:", error);
+          });
       });
     </script>
   </body>
