@@ -44,6 +44,11 @@
         font-size: 14px;
         color: #555;
       }
+      /* Highlight low-stock cards */
+      .low-stock {
+        border: 2px solid red;
+        background-color: #ffe6e6;
+      }
     </style>
   </head>
   <body>
@@ -171,22 +176,33 @@
         card.className = "col-md-4 col-sm-6";
 
         let quantityText = "";
+        let totalQuantity = 0; // Initialize total quantity
+
         if (product.productType === "material") {
           if (product.quantity && typeof product.quantity === "object") {
-            const kg = product.quantity.kg || 0;
-            const g = product.quantity.g || 0;
+            const kg = parseFloat(product.quantity.kg) || 0;
+            const g = parseFloat(product.quantity.g) || 0;
+            totalQuantity = kg + g / 1000; // Convert grams to kilograms
             quantityText = `Quantity: ${kg} kg ${g} g`;
           } else {
             quantityText = "Quantity: N/A";
           }
         } else {
+          const qty = parseFloat(product.quantity);
+          totalQuantity = isNaN(qty) ? 0 : qty;
           quantityText = `Quantity: ${
             product.quantity !== undefined ? product.quantity : "N/A"
           }`;
         }
 
+        // Determine if the product is low in stock
+        const isLowStock = totalQuantity > 0 && totalQuantity <= 10;
+
+        // Apply 'low-stock' class if necessary
+        const cardClass = isLowStock ? "card low-stock" : "card";
+
         card.innerHTML = `
-          <div class="card">
+          <div class="${cardClass}">
             <div class="card-body">
               <h5 class="card-title">${sanitizeInput(product.productName)}</h5>
               <p class="card-text">${quantityText}</p>
