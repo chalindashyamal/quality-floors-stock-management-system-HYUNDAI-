@@ -151,6 +151,11 @@
                 <label class="form-label">Grams</label>
                 <input type="number" step="1" class="form-control" name="${productId}_grams" placeholder="Enter grams">
               `;
+            } else if (productType === "machine") {
+              productElement.innerHTML = `
+                <label class="form-label">${productName}</label>
+                <input type="number" class="form-control" name="${productId}_usage" placeholder="Enter usage hours">
+              `;
             } else {
               productElement.innerHTML = `
                 <label class="form-label">${productName}</label>
@@ -176,7 +181,7 @@
       // Handle report submission
       const dailyReportForm = document.getElementById("dailyReportForm");
 
-      dailyReportForm.addEventListener("submit", (e) => {
+      dailyReportForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const formData = new FormData(dailyReportForm);
@@ -195,65 +200,98 @@
           const newReportRef = push(reportRef);
           const currentDateTime = new Date().toISOString();
 
-          set(newReportRef, {
-            timestamp: currentDateTime,
-            data: reportData,
-          })
-            .then(() => {
-              // Update product quantities if the product is in the material section
-              const materialUpdates = {};
+          try {
+            // Submit the report
+            await set(newReportRef, {
+              timestamp: currentDateTime,
+              data: reportData,
+            });
 
-              Object.entries(reportData).forEach(async ([key, value]) => {
-                if (key.endsWith("_kg") || key.endsWith("_grams")) {
-                  const productId = key.split("_")[0];
-                  const kg = parseFloat(reportData[`${productId}_kg`] || 0);
-                  const grams = parseFloat(
-                    reportData[`${productId}_grams`] || 0
-                  );
-                  const totalGrams = kg * 1000 + grams;
+            // Update product quantities
+            const updates = {};
 
-                  try {
-                    const productRef = ref(database, `products/${productId}`);
-                    const productSnapshot = await get(productRef); // Using get instead of onValue for synchronous behavior
-                    const product = productSnapshot.val();
+            for (const [key, value] of Object.entries(reportData)) {
+              const [productId, field] = key.split("_");
+
+              if (
+                field === "kg" ||
+                field === "grams" ||
+                field === "quantity" ||
+                field === "usage"
+              ) {
+                const productRef = ref(database, `products/${productId}`);
+                const productSnapshot = await get(productRef);
+                const product = productSnapshot.val();
+
+                if (product) {
+                  if (product.productType === "material") {
+                    const kg = parseFloat(reportData[`${productId}_kg`] || 0);
+                    const grams = parseFloat(
+                      reportData[`${productId}_grams`] || 0
+                    );
+                    const totalGrams = kg * 1000 + grams;
+
+                    const currentKg = product.quantity.kg || 0;
+                    const currentG = product.quantity.g || 0;
+                    const currentTotalGrams = currentKg * 1000 + currentG;
+
+                    const newTotalGrams = Math.max(
+                      currentTotalGrams - totalGrams,
+                      0
+                    );
+                    const newKg = Math.floor(newTotalGrams / 1000);
+                    const newG = newTotalGrams % 1000;
+
+                    updates[`products/${productId}/quantity`] = {
+                      kg: newKg,
+                      g: newG,
+                    };
+                  } else if (product.productType === "machine") {
+                    // For machines, we don't deduct quantity, just log usage
+                    const usage = parseFloat(value) || 0;
+                    updates[`products/${productId}/totalUsage`] =
+                      (product.totalUsage || 0) + usage;
+                  } else if (
+                    product.productType === "tool" ||
+                    product.productType === "other"
+                  ) {
+                    const quantity = parseInt(value, 10) || 0;
                     const currentQuantity = product.quantity || 0;
-                    const newQuantity = currentQuantity - totalGrams / 1000; // Convert grams to kilograms
+                    const newQuantity = Math.max(currentQuantity - quantity, 0);
 
-                    materialUpdates[productId] = newQuantity;
-                  } catch (error) {
-                    console.error("Error fetching product:", error);
+                    updates[`products/${productId}/quantity`] = newQuantity;
                   }
                 }
-              });
-
-              // Once all material updates are collected, update Firebase
-              for (const [id, quantity] of Object.entries(materialUpdates)) {
-                update(ref(database, `products/${id}`), {
-                  quantity: quantity,
-                }).catch((error) => {
-                  console.error("Error updating product quantity:", error);
-                });
               }
+            }
 
-              alert("Daily report created successfully!");
-              window.location.href = "view_report_history.html";
-            })
-            .catch((error) => {
-              console.error("Error creating report:", error);
-              alert("Error creating report: " + error.message);
-            });
+            // Apply all updates in a single operation
+            await update(ref(database), updates);
+
+            alert("Report submitted successfully and quantities updated!");
+            dailyReportForm.reset();
+          } catch (error) {
+            console.error(
+              "Error submitting report or updating quantities:",
+              error
+            );
+            alert("An error occurred. Please try again.");
+          }
         } else {
-          alert("No data entered. Please enter quantities for the products.");
+          alert("Please fill out at least one field.");
         }
       });
 
-      document.getElementById("logoutButton").addEventListener("click", (e) => {
+      // Logout functionality
+      const logoutButton = document.getElementById("logoutButton");
+      logoutButton.addEventListener("click", () => {
         signOut(auth)
           .then(() => {
+            // Redirect to login or home page after sign out
             window.location.href = "login.html";
           })
           .catch((error) => {
-            console.error("Logout error:", error);
+            console.error("Error signing out:", error);
           });
       });
     </script>
