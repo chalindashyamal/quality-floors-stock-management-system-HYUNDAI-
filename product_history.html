@@ -196,7 +196,13 @@
         }
 
         // Determine if the product is low in stock
-        const isLowStock = totalQuantity > 0 && totalQuantity <= 10;
+        // **Updated Condition**:
+        // Highlight if quantity <= 10 AND product is NOT in 'machine' or 'tool' sections
+        const isLowStock =
+          totalQuantity > 0 &&
+          totalQuantity <= 10 &&
+          product.productType !== "machine" &&
+          product.productType !== "tool";
 
         // Apply 'low-stock' class if necessary
         const cardClass = isLowStock ? "card low-stock" : "card";
