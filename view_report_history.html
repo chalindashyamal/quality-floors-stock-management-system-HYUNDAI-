@@ -265,33 +265,33 @@
           const processedProducts = new Set();
 
           for (const key in reportData) {
-            const productId = key.replace(/(_quantity|_kg|_grams)/, ""); // Extract product ID
+            const productId = key.replace(/(_quantity|_kg|_grams|_usage)/, ""); // Extract product ID
 
             // Only process if the product hasn't been displayed yet
             if (!processedProducts.has(productId)) {
               const product = products[productId];
               let quantityDisplay = "";
 
-              // If it's a material with both kg and grams
-              const kg = reportData[`${productId}_kg`] || 0;
-              const grams = reportData[`${productId}_grams`] || 0;
+              if (!product) continue; // Skip if product details are missing
 
-              if (kg || grams) {
+              if (product.productType === "material") {
+                const kg = reportData[`${productId}_kg`] || 0;
+                const grams = reportData[`${productId}_grams`] || 0;
                 quantityDisplay = `${kg} kg ${grams} grams`;
+              } else if (product.productType === "machine") {
+                const usage = reportData[`${productId}_usage`] || 0;
+                quantityDisplay = `${usage} hours`;
               } else {
-                // For non-materials or items with only a quantity field
                 const quantity = reportData[`${productId}_quantity`] || 0;
                 quantityDisplay = `${quantity}`;
               }
 
-              if (product) {
-                const productName = product.productName;
-                reportDetails += `
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              ${productName}
-              <span class="badge bg-primary rounded-pill">${quantityDisplay}</span>
-            </li>`;
-              }
+              const productName = product.productName;
+              reportDetails += `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  ${productName}
+                  <span class="badge bg-primary rounded-pill">${quantityDisplay}</span>
+                </li>`;
 
               // Mark this product as processed
               processedProducts.add(productId);
@@ -309,6 +309,7 @@
         }
       }
 
+      // **Updated Download Report Function**
       // Download report as text file
       async function downloadReport(reportData, timestamp) {
         const productsRef = ref(database, "products");
@@ -321,19 +322,42 @@
             timestamp
           ).toLocaleString()}\n\n`;
 
-          for (const key in reportData) {
-            if (key.endsWith("_quantity")) {
-              const productId = key.replace("_quantity", "");
-              const quantity = reportData[key];
-              const product = products[productId];
+          // To store processed product IDs to avoid duplicates
+          const processedProducts = new Set();
 
-              if (product) {
-                const productName = product.productName;
-                reportText += `${productName}: ${quantity}\n`;
+          for (const key in reportData) {
+            const [productId, field] = key.split("_");
+
+            if (!processedProducts.has(productId)) {
+              const product = products[productId];
+              if (!product) continue; // Skip if product details are missing
+
+              let quantityDisplay = "";
+
+              if (product.productType === "material") {
+                const kg = parseFloat(reportData[`${productId}_kg`] || 0);
+                const grams = parseFloat(reportData[`${productId}_grams`] || 0);
+                quantityDisplay = `${kg} kg ${grams} grams`;
+              } else if (product.productType === "machine") {
+                const usage = parseFloat(reportData[`${productId}_usage`] || 0);
+                quantityDisplay = `${usage} hours`;
+              } else {
+                const quantity = parseInt(
+                  reportData[`${productId}_quantity`] || 0,
+                  10
+                );
+                quantityDisplay = `${quantity}`;
               }
+
+              const productName = product.productName;
+              reportText += `${productName}: ${quantityDisplay}\n`;
+
+              // Mark this product as processed
+              processedProducts.add(productId);
             }
           }
 
+          // Create a Blob from the report text
           const blob = new Blob([reportText], { type: "text/plain" });
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
