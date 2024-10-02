@@ -17,6 +17,37 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css"
     />
     <link rel="stylesheet" href="view_report_history.css" />
+    <style>
+      /* Optional: Custom scrollbar styling for the modal body */
+      .modal-body {
+        /* Ensure the modal body doesn't exceed 70% of viewport height */
+        max-height: 50vh;
+        overflow-y: auto;
+      }
+
+      /* Custom scrollbar for WebKit browsers */
+      .modal-body::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .modal-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+
+      .modal-body::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+
+      .modal-body::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+
+      /* Optional: Adjust modal content padding */
+      #reportDetailsContent {
+        padding-right: 10px; /* To prevent content hiding behind scrollbar */
+      }
+    </style>
   </head>
   <body>
     <!-- Navbar -->
@@ -108,7 +139,8 @@
       aria-labelledby="reportDetailsModalLabel"
       aria-hidden="true"
     >
-      <div class="modal-dialog modal-lg">
+      <!-- Added 'modal-dialog-scrollable' class here -->
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="reportDetailsModalLabel">
